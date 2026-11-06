@@ -1,0 +1,363 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <base target="_top">
+  <meta charset="utf-8">
+  <style>
+    * { box-sizing: border-box; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+    body { background-color: #f3f4f6; margin: 0; padding: 16px; color: #1f2937; }
+    .container { max-width: 500px; margin: 0 auto; padding-bottom: 40px; }
+    
+    .tab-nav { display: flex; background: #e5e7eb; border-radius: 12px; padding: 4px; margin-bottom: 16px; }
+    .tab-btn { flex: 1; text-align: center; padding: 12px; font-weight: 700; font-size: 14px; border-radius: 8px; cursor: pointer; color: #4b5563; transition: all 0.2s; }
+    .tab-btn.active { background: white; color: #4f46e5; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
+
+    .view-section { display: none; }
+    .view-section.active { display: block; }
+
+    .card { background: white; border-radius: 16px; padding: 16px; margin-bottom: 16px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); }
+    
+    .summary-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 16px; }
+    .summary-card { background: white; border-radius: 14px; padding: 12px 8px; text-align: center; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
+    .summary-title { font-size: 11px; color: #6b7280; font-weight: 600; margin-bottom: 4px; word-break: keep-all; }
+    .summary-value { font-size: 18px; font-weight: 800; color: #4f46e5; }
+    
+    .section-label { font-size: 14px; font-weight: 700; margin: 14px 0 8px 0; color: #374151; }
+    .grid-2 { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; }
+    
+    .btn-option {
+      background-color: #f9fafb;
+      border: 2px solid #e5e7eb;
+      border-radius: 12px;
+      padding: 12px 4px;
+      font-size: 14px;
+      font-weight: 600;
+      color: #4b5563;
+      cursor: pointer;
+      text-align: center;
+      transition: all 0.2s;
+    }
+    .btn-option.selected {
+      background-color: #eef2ff;
+      border-color: #4f46e5;
+      color: #4f46e5;
+    }
+    
+    input[type="date"], input[type="number"], input[type="text"] {
+      width: 100%;
+      padding: 14px;
+      font-size: 16px;
+      border: 2px solid #e5e7eb;
+      border-radius: 12px;
+      outline: none;
+      background-color: #f9fafb;
+    }
+    input:focus { border-color: #4f46e5; background-color: #ffffff; }
+    
+    .btn-submit {
+      width: 100%;
+      background-color: #4f46e5;
+      color: white;
+      border: none;
+      border-radius: 12px;
+      padding: 16px;
+      font-size: 18px;
+      font-weight: 700;
+      cursor: pointer;
+      margin-top: 16px;
+      box-shadow: 0 4px 12px rgba(79, 70, 229, 0.3);
+    }
+    .btn-submit:disabled { background-color: #9ca3af; box-shadow: none; }
+
+    .device-item { padding: 12px 0; border-bottom: 1px solid #f3f4f6; }
+    .device-item:last-child { border-bottom: none; }
+    .badge { display: inline-block; padding: 2px 8px; border-radius: 6px; font-size: 11px; font-weight: 700; margin-right: 4px; }
+    .badge-status { background-color: #fef3c7; color: #d97706; }
+    .badge-status.complete { background-color: #d1fae5; color: #065f46; }
+    .badge-forced { background-color: #fee2e2; color: #991b1b; }
+    .badge-optional { background-color: #e0e7ff; color: #3730a3; }
+    
+    .btn-delete {
+      background-color: #fee2e2;
+      color: #991b1b;
+      border: none;
+      padding: 4px 10px;
+      border-radius: 6px;
+      font-size: 12px;
+      font-weight: 700;
+      cursor: pointer;
+    }
+    .btn-delete:hover {
+      background-color: #fecaca;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    
+    <div class="tab-nav">
+      <div class="tab-btn active" onclick="switchTab('dashboard')">대시보드 & 요약</div>
+      <div class="tab-btn" onclick="switchTab('input')">기기 등록</div>
+      <div class="tab-btn" onclick="switchTab('list')">기기 목록</div>
+    </div>
+
+    <!-- 1. 대시보드 화면 -->
+    <div id="dashboard-view" class="view-section active">
+      <div class="summary-grid">
+        <div class="summary-card">
+          <div class="summary-title">대기 기기수</div>
+          <div class="summary-value" id="statWaitingCount">0대</div>
+        </div>
+        <div class="summary-card">
+          <div class="summary-title">평균 소요시간</div>
+          <div class="summary-value" id="statAvgDuration">0분</div>
+        </div>
+        <div class="summary-card">
+          <div class="summary-title">총 데이터 소모</div>
+          <div class="summary-value" id="statTotalData">0MB</div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="section-label" style="margin-top:0;">최근 등록된 업데이트 내역</div>
+        <div id="dashboardRecentList">
+          <div style="text-align:center; color:#9ca3af; padding:16px;">데이터를 불러오는 중...</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 2. 기기 등록 화면 (입력) -->
+    <div id="input-view" class="view-section">
+      <div class="card">
+        <div class="section-label" style="margin-top:0;">자산 분류</div>
+        <div class="grid-2" id="assetGroup">
+          <button type="button" class="btn-option selected" data-val="스마트기기">스마트기기</button>
+          <button type="button" class="btn-option" data-val="태블릿">태블릿</button>
+        </div>
+
+        <div class="section-label">기기 별칭 (식별용)</div>
+        <input type="text" id="aliasInput" placeholder="예: 테스트폰_A">
+
+        <div class="section-label">현재 상태</div>
+        <div class="grid-2" id="statusGroup">
+          <button type="button" class="btn-option selected" data-val="업데이트 대기">업데이트 대기</button>
+          <button type="button" class="btn-option" data-val="완료">완료</button>
+        </div>
+
+        <div class="section-label">업데이트 강제성</div>
+        <div class="grid-2" id="forcedGroup">
+          <button type="button" class="btn-option selected" data-val="강제">강제</button>
+          <button type="button" class="btn-option" data-val="선택">선택</button>
+        </div>
+
+        <div class="section-label">업데이트 소요시간 (분)</div>
+        <input type="number" id="durationInput" placeholder="예: 30" inputmode="numeric">
+
+        <div class="section-label">업무 지연 시간 (분)</div>
+        <input type="number" id="delayInput" placeholder="예: 50" inputmode="numeric">
+
+        <div class="section-label">데이터 소모량 (MB)</div>
+        <input type="number" id="dataUsageInput" placeholder="예: 200" inputmode="numeric">
+
+        <div class="section-label">점검예정일</div>
+        <input type="date" id="scheduledDateInput">
+
+        <button type="button" class="btn-submit" id="submitBtn" onclick="saveData()">등록 저장하기</button>
+      </div>
+    </div>
+
+    <!-- 3. 기기 목록 화면 -->
+    <div id="list-view" class="view-section">
+      <div class="card">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+          <div class="section-label" style="margin:0;">업데이트 관리 목록</div>
+          <button type="button" onclick="loadAppData()" style="background:#eef2ff; color:#4f46e5; border:none; padding:6px 12px; border-radius:6px; font-weight:700; cursor:pointer;">새로고침</button>
+        </div>
+        <div id="deviceListContainer">
+          <div style="text-align:center; color:#9ca3af; padding:16px;">데이터를 불러오는 중...</div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <script>
+    let selectedAsset = '스마트기기';
+    let selectedStatus = '업데이트 대기';
+    let selectedForced = '강제';
+
+    window.onload = function() {
+      const today = new Date().toISOString().split('T')[0];
+      document.getElementById('scheduledDateInput').value = today;
+
+      setupBtnGroup('assetGroup', val => selectedAsset = val);
+      setupBtnGroup('statusGroup', val => selectedStatus = val);
+      setupBtnGroup('forcedGroup', val => selectedForced = val);
+
+      loadAppData();
+    };
+
+    function setupBtnGroup(groupId, callback) {
+      const container = document.getElementById(groupId);
+      const buttons = container.querySelectorAll('.btn-option');
+      buttons.forEach(btn => {
+        btn.addEventListener('click', function() {
+          buttons.forEach(b => b.classList.remove('selected'));
+          this.classList.add('selected');
+          callback(this.getAttribute('data-val'));
+        });
+      });
+    }
+
+    function switchTab(tabName) {
+      document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+      document.querySelectorAll('.view-section').forEach(sec => sec.classList.remove('active'));
+
+      if (tabName === 'dashboard') {
+        document.querySelectorAll('.tab-btn')[0].classList.add('active');
+        document.getElementById('dashboard-view').classList.add('active');
+      } else if (tabName === 'input') {
+        document.querySelectorAll('.tab-btn')[1].classList.add('active');
+        document.getElementById('input-view').classList.add('active');
+      } else if (tabName === 'list') {
+        document.querySelectorAll('.tab-btn')[2].classList.add('active');
+        document.getElementById('list-view').classList.add('active');
+      }
+    }
+
+    function loadAppData() {
+      google.script.run.withSuccessHandler(function(res) {
+        document.getElementById('statWaitingCount').innerText = res.waitingCount + '대';
+        document.getElementById('statAvgDuration').innerText = res.avgDuration + '분';
+        document.getElementById('statTotalData').innerText = res.totalData.toLocaleString() + 'MB';
+
+        renderDeviceLists(res.devices);
+      }).getAppData();
+    }
+
+    function renderDeviceLists(devices) {
+      const listContainer = document.getElementById('deviceListContainer');
+      const dashListContainer = document.getElementById('dashboardRecentList');
+
+      if (!devices || devices.length === 0) {
+        const emptyHtml = '<div style="text-align:center; color:#9ca3af; padding:16px;">등록된 기기 데이터가 없습니다.</div>';
+        listContainer.innerHTML = emptyHtml;
+        dashListContainer.innerHTML = emptyHtml;
+        return;
+      }
+
+      let listHtml = '';
+      devices.forEach(item => {
+        const statusClass = item.status === '완료' ? 'complete' : '';
+        const forcedClass = item.forced === '강제' ? 'badge-forced' : 'badge-optional';
+        listHtml += `
+          <div class="device-item">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
+              <div>
+                <span class="badge badge-status ${statusClass}">${item.status}</span>
+                <span class="badge ${forcedClass}">${item.forced}</span>
+                <strong style="font-size:15px; color:#111827;">${item.alias}</strong>
+              </div>
+              <button type="button" class="btn-delete" onclick="deleteDevice(${item.rowIndex})">삭제</button>
+            </div>
+            <div style="font-size:12px; color:#6b7280; margin-bottom:4px;">점검예정: ${item.scheduledDate}</div>
+            <div style="font-size:13px; color:#4b5563; display:flex; gap:10px; flex-wrap:wrap;">
+              <span>분류: <b>${item.assetType}</b></span>
+              <span>소요: <b>${item.duration}분</b></span>
+              <span>지연: <b>${item.delay}분</b></span>
+              <span>데이터: <b>${item.dataUsage}MB</b></span>
+            </div>
+          </div>
+        `;
+      });
+      listContainer.innerHTML = listHtml;
+
+      let dashHtml = '';
+      devices.slice(0, 5).forEach(item => {
+        const statusClass = item.status === '완료' ? 'complete' : '';
+        const forcedClass = item.forced === '강제' ? 'badge-forced' : 'badge-optional';
+        dashHtml += `
+          <div class="device-item">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
+              <div>
+                <span class="badge badge-status ${statusClass}">${item.status}</span>
+                <span class="badge ${forcedClass}">${item.forced}</span>
+                <strong style="font-size:14px; color:#111827;">${item.alias}</strong>
+              </div>
+              <span style="font-size:12px; color:#6b7280;">예정: ${item.scheduledDate}</span>
+            </div>
+            <div style="font-size:12px; color:#4b5563;">소요: ${item.duration}분 | 지연: ${item.delay}분 | 데이터: ${item.dataUsage}MB</div>
+          </div>
+        `;
+      });
+      dashListContainer.innerHTML = dashHtml;
+    }
+
+    function deleteDevice(rowIndex) {
+      if (!confirm('정말 이 기기 정보를 삭제하시겠습니까?')) {
+        return;
+      }
+
+      google.script.run
+        .withSuccessHandler(function(res) {
+          if (res.success) {
+            loadAppData();
+            alert('성공적으로 삭제되었습니다.');
+          } else {
+            alert('삭제 중 오류가 발생했습니다: ' + res.error);
+          }
+        })
+        .deleteDeviceData(rowIndex);
+    }
+
+    function saveData() {
+      const alias = document.getElementById('aliasInput').value.trim();
+      const duration = document.getElementById('durationInput').value;
+      const delay = document.getElementById('delayInput').value;
+      const dataUsage = document.getElementById('dataUsageInput').value;
+      const scheduledDate = document.getElementById('scheduledDateInput').value;
+      const submitBtn = document.getElementById('submitBtn');
+
+      if (!alias) { alert('기기 별칭을 입력해 주세요.'); return; }
+      if (!duration) { alert('업데이트 소요시간을 입력해 주세요.'); return; }
+      if (!delay) { alert('업무 지연 시간을 입력해 주세요.'); return; }
+      if (!dataUsage) { alert('데이터 소모량을 입력해 주세요.'); return; }
+      if (!scheduledDate) { alert('점검예정일을 선택해 주세요.'); return; }
+
+      submitBtn.disabled = true;
+      submitBtn.innerText = '저장 중...';
+
+      const payload = {
+        assetType: selectedAsset,
+        alias: alias,
+        status: selectedStatus,
+        forced: selectedForced,
+        duration: duration,
+        delay: delay,
+        dataUsage: dataUsage,
+        scheduledDate: scheduledDate
+      };
+
+      google.script.run
+        .withSuccessHandler(function(res) {
+          submitBtn.disabled = false;
+          submitBtn.innerText = '등록 저장하기';
+
+          if (res.success) {
+            document.getElementById('aliasInput').value = '';
+            document.getElementById('durationInput').value = '';
+            document.getElementById('delayInput').value = '';
+            document.getElementById('dataUsageInput').value = '';
+            
+            loadAppData();
+            switchTab('dashboard');
+            alert('성공적으로 저장되었습니다!');
+          } else {
+            alert('저장 중 오류가 발생했습니다: ' + res.error);
+          }
+        })
+        .addDeviceData(payload);
+    }
+  </script>
+</body>
+</html>
